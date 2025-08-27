@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToDo App Mejorada</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+      border: none;
+      transition: 0.2s;
+    }
+    button:hover { background: #0056b3; }
+
+    .filtros {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li.task {
+      background: #fafafa;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 6px solid #ccc;
+      transition: transform 0.2s;
+    }
+    li.task:hover { transform: translateX(5px); }
+
+    li.completed {
+      text-decoration: line-through;
+      color: #888;
+      background: #e6ffe6;
+      border-left-color: #28a745;
+    }
+    li.prioridad-alta { border-left-color: #dc3545; }
+    li.prioridad-media { border-left-color: #ffc107; }
+    li.prioridad-baja  { border-left-color: #28a745; }
+
+    .acciones button {
+      margin-left: 5px;
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+    .btn-editar { background: #ffc107; }
+    .btn-borrar { background: #dc3545; }
+    .btn-marcar { background: #28a745; }
+
+    .empty {
+      text-align: center;
+      color: #777;
+      padding: 20px;
+    }
+
+    .progreso-container {
+      margin: 20px 0;
+    }
+    .barra {
+      background: #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 20px;
+    }
+    .progreso {
+      height: 100%;
+      width: 0;
+      transition: width 0.4s ease-in-out, background 0.4s;
+    }
+    #contadorTareas {
+      margin-top: 8px;
+      text-align: right;
+      font-size: 14px;
+      color: #555;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📌 ToDo App Mejorada</h1>
+
+    <form id="formTarea">
+      <input type="text" id="titulo" placeholder="Título" required>
+      <input type="text" id="descripcion" placeholder="Descripción">
+      <select id="prioridad">
+        <option value="Baja">Baja</option>
+        <option value="Media">Media</option>
+        <option value="Alta">Alta</option>
+      </select>
+      <input type="date" id="fechaLimite" required>
+      <button type="submit">➕ Añadir</button>
+    </form>
+
+    <div class="filtros">
+      <select id="filtroPrioridad">
+        <option value="Todas">Todas las prioridades</option>
+        <option value="Alta">Alta</option>
+        <option value="Media">Media</option>
+        <option value="Baja">Baja</option>
+      </select>
+      <select id="filtroEstado">
+        <option value="Todas">Todos los estados</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="Completada">Completada</option>
+      </select>
+      <select id="filtroFecha">
+        <option value="Todas">Todas las fechas</option>
+        <option value="Hoy">Hoy</option>
+        <option value="Proximos7">Próximos 7 días</option>
+      </select>
+      <button type="button" onclick="aplicarFiltros()">🔍 Filtrar</button>
+    </div>
+
+    <div class="progreso-container">
+      <div class="barra"><div id="progreso" class="progreso"></div></div>
+      <div id="contadorTareas">Pendientes: 0 | Completadas: 0</div>
+    </div>
+
+    <ul id="listaTareas"></ul>
+  </div>
+
+  <!-- Modal editar -->
+  <div id="modalEditar" class="modal">
+    <div class="modal-content">
+      <h2>✏️ Editar tarea</h2>
+      <input type="hidden" id="editId">
+      <input type="text" id="editTitulo" placeholder="Título"><br><br>
+      <select id="editPrioridad">
+        <option value="Baja">Baja</option>
+        <option value="Media">Media</option>
+        <option value="Alta">Alta</option>
+      </select><br><br>
+      <input type="date" id="editFecha"><br><br>
+      <button onclick="guardarEdicion()">💾 Guardar</button>
+      <button onclick="cerrarModal()">❌ Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:8080/api/v1/tareas";
+    let todasLasTareas = [];
+
+    async function obtenerTareas() {
+      try {
+        const res = await fetch(API_URL + "/all");
+        todasLasTareas = await res.json();
+        aplicarFiltros();
+      } catch (e) {
+        alert("❌ Error al obtener tareas");
+      }
+    }
+
+    function aplicarFiltros() {
+      const prioridad = document.getElementById('filtroPrioridad').value;
+      const estado = document.getElementById('filtroEstado').value;
+      const fecha = document.getElementById('filtroFecha').value;
+      const hoy = new Date();
+
+      const listaFiltrada = todasLasTareas.filter(t => {
+        let pasa = true;
+        if (prioridad !== 'Todas') pasa = pasa && t.prioridad === prioridad;
+        if (estado !== 'Todas') pasa = pasa && (estado === 'Completada' ? t.completada : !t.completada);
+
+        if (fecha === 'Hoy') {
+          pasa = pasa && t.fechaLimite === hoy.toISOString().split('T')[0];
+        } else if (fecha === 'Proximos7') {
+          const limite = new Date();
+          limite.setDate(hoy.getDate() + 7);
+          const tareaFecha = new Date(t.fechaLimite);
+          pasa = pasa && tareaFecha >= hoy && tareaFecha <= limite;
+        }
+        return pasa;
+      });
+
+      mostrarTareas(listaFiltrada, todasLasTareas);
+    }
+
+    function mostrarTareas(tareas, todas) {
+      const lista = document.getElementById('listaTareas');
+      lista.innerHTML = '';
+
+      // Progreso
+      const total = todas.length;
+      const completadas = todas.filter(t => t.completada).length;
+      const porcentaje = total === 0 ? 0 : Math.round((completadas / total) * 100);
+
+      const progreso = document.getElementById('progreso');
+      progreso.style.width = porcentaje + '%';
+      progreso.style.background = porcentaje <= 33 ? '#dc3545' : (porcentaje <= 66 ? '#ffc107' : '#28a745');
+      document.getElementById('contadorTareas').textContent = `Pendientes: ${total - completadas} | Completadas: ${completadas}`;
+
+      if (tareas.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'empty';
+        li.textContent = 'No hay tareas';
+        lista.appendChild(li);
+        return;
+      }
+
+      tareas.forEach(tarea => {
+        const li = document.createElement('li');
+        li.className = 'task';
+        if (tarea.completada) li.classList.add('completed');
+        if (tarea.prioridad) li.classList.add('prioridad-' + tarea.prioridad.toLowerCase());
+
+        const texto = document.createElement('span');
+        texto.textContent = `${tarea.titulo} (Vence: ${tarea.fechaLimite || '---'})`;
+        li.appendChild(texto);
+
+        const acciones = document.createElement('div');
+        acciones.className = 'acciones';
+
+        const btnMarcar = document.createElement('button');
+        btnMarcar.innerHTML = tarea.completada ? '❌ Desmarcar' : '✔️ Marcar';
+        btnMarcar.className = 'btn-marcar';
+        btnMarcar.onclick = () => toggleCompletada(tarea.id, !tarea.completada);
+        acciones.appendChild(btnMarcar);
+
+        const btnEditar = document.createElement('button');
+        btnEditar.innerHTML = '✏️ Editar';
+        btnEditar.className = 'btn-editar';
+        btnEditar.onclick = () => editarTarea(tarea.id, tarea.titulo, tarea.prioridad, tarea.fechaLimite);
+        acciones.appendChild(btnEditar);
+
+        const btnBorrar = document.createElement('button');
+        btnBorrar.innerHTML = '🗑️ Borrar';
+        btnBorrar.className = 'btn-borrar';
+        btnBorrar.onclick = () => borrarTarea(tarea.id);
+        acciones.appendChild(btnBorrar);
+
+        li.appendChild(acciones);
+        lista.appendChild(li);
+      });
+    }
+
+    document.getElementById('formTarea').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const hoy = new Date().toISOString().split("T")[0];
+      const fecha = document.getElementById('fechaLimite').value;
+      if (fecha < hoy) {
+        alert("❌ No puedes poner una fecha anterior a hoy");
+        return;
+      }
+
+      const nueva = {
+        titulo: document.getElementById('titulo').value,
+        descripcion: document.getElementById('descripcion').value,
+        prioridad: document.getElementById('prioridad').value,
+        fechaLimite: fecha,
+        completada: false
+      };
+
+      await fetch(API_URL + "/nueva", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(nueva)
+      });
+      obtenerTareas();
+      e.target.reset();
+    });
+
+    async function toggleCompletada(id, estado) {
+      await fetch(API_URL + `/completada/${id}?completada=${estado}`, {method: "PUT"});
+      obtenerTareas();
+    }
+
+    async function borrarTarea(id) {
+      await fetch(API_URL + `/borrar/${id}`, {method: "DELETE"});
+      obtenerTareas();
+    }
+
+    function editarTarea(id, titulo, prioridad, fecha) {
+      document.getElementById('editId').value = id;
+      document.getElementById('editTitulo').value = titulo;
+      document.getElementById('editPrioridad').value = prioridad;
+      document.getElementById('editFecha').value = fecha || '';
+      document.getElementById('modalEditar').style.display = "flex";
+    }
+
+    async function guardarEdicion() {
+      const id = document.getElementById('editId').value;
+      const titulo = document.getElementById('editTitulo').value;
+      const prioridad = document.getElementById('editPrioridad').value;
+      const fecha = document.getElementById('editFecha').value;
+
+      await fetch(API_URL + "/nueva", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id, titulo, prioridad, fechaLimite: fecha })
+      });
+
+      cerrarModal();
+      obtenerTareas();
+    }
+
+    function cerrarModal() {
+      document.getElementById('modalEditar').style.display = "none";
+    }
+
+    window.onclick = (e) => {
+      if (e.target.id === 'modalEditar') cerrarModal();
+    };
+
+    obtenerTareas();
+  </script>
+</body>
+</html>
